@@ -179,7 +179,7 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
 
     delete pack;
     
-    if (!IsThreadReply && response.Status != HTTPStatus_OK)
+    if ((!IsThreadReply && response.Status != HTTPStatus_OK) || (IsThreadReply && response.Status != HTTPStatus_NoContent))
     {
         if (retries < g_cvWebhookRetry.IntValue)
         {
@@ -188,32 +188,17 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
             retries++;
             return;
         } else {
-        #if defined _extendeddiscord_included
-            if (g_Plugin_ExtDiscord)
-                ExtendedDiscord_LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
-            else
+            if (!g_Plugin_ExtDiscord)
+            {
                 LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
-        #else
-            LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
-        #endif
-        }
-    }
-    else if (IsThreadReply && response.Status != HTTPStatus_NoContent)
-    {
-        if (retries < g_cvWebhookRetry.IntValue)
-        {
-            PrintToServer("[%s] Failed to send the webhook. Resending it .. (%d/%d)", PLUGIN_NAME, retries, g_cvWebhookRetry.IntValue);
-            SendWebHook(sMessage, sWebhookURL);
-            retries++;
-            return;
-        } else {
+                LogError("[%s] Failed message : %s", PLUGIN_NAME, sMessage);
+            }
         #if defined _extendeddiscord_included
-            if (g_Plugin_ExtDiscord)
-                ExtendedDiscord_LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
             else
-                LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
-        #else
-            LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
+            {
+                ExtendedDiscord_LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
+                ExtendedDiscord_LogError("[%s] Failed message : %s", PLUGIN_NAME, sMessage);
+            }
         #endif
         }
     }
