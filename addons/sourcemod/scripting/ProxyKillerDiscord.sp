@@ -9,8 +9,6 @@
 #define REQUIRE_PLUGIN
 
 #define PLUGIN_NAME "ProxyKiller Discord"
-#define WEBHOOK_URL_MAX_SIZE			1000
-#define WEBHOOK_THREAD_NAME_MAX_SIZE	100
 
 ConVar g_cSteamProfileURLPrefix, g_cIPDetailURLPrefix, g_cCountBots;
 ConVar g_cvWebhook, g_cvWebhookRetry, g_cvAvatar;
@@ -24,7 +22,7 @@ public Plugin myinfo =
     name = PLUGIN_NAME,
     author = "maxime1907, Sikari, .Rushaway",
     description = "Sends detected vpn players info to discord",
-    version = "1.2",
+    version = "1.2.1",
     url = "https://github.com/srcdslab/sm-plugin-ProxyKiller-Discord"
 };
 
@@ -115,14 +113,14 @@ public void ProxyKiller_OnClientResult(ProxyUser pUser, bool result, bool fromCa
     int iConnected = GetClientCountEx(g_cCountBots.BoolValue);
     Format(sCount, sizeof(sCount), "Players : %d/%d", iConnected, iMaxPlayers);
 
-    char sMessage[4096];
+    char sMessage[WEBHOOK_MSG_MAX_SIZE];
     Format(sMessage, sizeof(sMessage), "```%s [%s] \nDetected IP : %s \nCurrent map : %s \n%s \n%s```%s \n%s", sPlayerName, sSteamID2, sIP, g_sCurrentMap, sTime, sCount, sSteamProfileURL, sIPLocationURL);
     ReplaceString(sMessage, sizeof(sMessage), "\\n", "\n");
 
     SendWebHook(sMessage, sWebhookURL);
 }
 
-stock void SendWebHook(char sMessage[4096], char sWebhookURL[WEBHOOK_URL_MAX_SIZE])
+stock void SendWebHook(char sMessage[WEBHOOK_MSG_MAX_SIZE], char sWebhookURL[WEBHOOK_URL_MAX_SIZE])
 {
     Webhook webhook = new Webhook(sMessage);
 
@@ -173,7 +171,7 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
 
     bool IsThreadReply = pack.ReadCell();
 
-    char sMessage[4096], sWebhookURL[WEBHOOK_URL_MAX_SIZE];
+    char sMessage[WEBHOOK_MSG_MAX_SIZE], sWebhookURL[WEBHOOK_URL_MAX_SIZE];
     pack.ReadString(sMessage, sizeof(sMessage));
     pack.ReadString(sWebhookURL, sizeof(sWebhookURL));
 
