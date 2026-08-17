@@ -11,9 +11,9 @@ This repository contains a SourcePawn plugin for SourceMod that integrates Proxy
 ## Technical Environment
 
 - **Language**: SourcePawn
-- **Platform**: SourceMod 1.11+ (as specified in sourceknight.yaml)
-- **Build System**: SourceKnight (automated dependency management and compilation)
-- **Compiler**: SourceMod compiler (spcomp) via SourceKnight
+- **Platform**: SourceMod 1.12+
+- **Build System**: Native GitHub Actions workflow (rumblefrog/setup-sp)
+- **Compiler**: SourceMod compiler (spcomp) via setup-sp
 - **CI/CD**: GitHub Actions with automated build, tag, and release
 
 ## Project Structure
@@ -25,36 +25,33 @@ This repository contains a SourcePawn plugin for SourceMod that integrates Proxy
 │   └── dependabot.yml            # Dependency updates
 ├── addons/sourcemod/scripting/
 │   └── ProxyKillerDiscord.sp     # Main plugin source
-├── sourceknight.yaml             # Build configuration and dependencies
 ├── README.md                     # Basic project description
 └── .gitignore                    # Git ignore rules
 ```
 
-## Build System (SourceKnight)
+## Build System (GitHub Actions)
 
-This project uses SourceKnight for automated dependency management and compilation:
+This project uses a native GitHub Actions workflow for dependency management and compilation:
 
-### Dependencies (automatically managed):
-- **sourcemod**: Base SourceMod framework (v1.11.0-git6934)
-- **proxyKiller**: Core VPN/proxy detection plugin
-- **discordwebapi**: Discord webhook API integration
-- **Extended-Discord**: Enhanced Discord logging (optional)
+### Dependencies (cloned in CI):
+- **sourcemod**: Base SourceMod framework, installed via `rumblefrog/setup-sp` (1.12.x)
+- **proxyKiller**: Core VPN/proxy detection plugin (srcdslab/sm-plugin-ProxyKiller)
+- **discordwebapi**: Discord webhook API integration (srcdslab/sm-plugin-DiscordWebhookAPI)
+- **Extended-Discord**: Enhanced Discord logging, optional (srcdslab/sm-plugin-Extended-Discord)
 
 ### Build Commands:
 ```bash
-# Local development (if SourceKnight is available)
-pip install sourceknight
-sourceknight build
+# CI installs the compiler via rumblefrog/setup-sp, clones dependency
+# include files into addons/sourcemod/scripting/include, then runs:
+spcomp -i include -o ../plugins/ProxyKillerDiscord.smx ProxyKillerDiscord.sp
 
-# Output location: /addons/sourcemod/plugins
+# Output location: addons/sourcemod/plugins
 ```
 
-**Note**: The primary build system runs through GitHub Actions using `maxime1907/action-sourceknight@v1`, which automatically handles dependency resolution and compilation.
-
-### CI/CD Pipeline:
-- **Build**: Uses GitHub Action `maxime1907/action-sourceknight@v1` with `cmd: build`
-- **Dependencies**: Automatically downloads and configures all dependencies
-- **Artifacts**: Creates package in `.sourceknight/package/` directory
+### CI/CD Pipeline (.github/workflows/ci.yml):
+- **Build**: Installs spcomp via `rumblefrog/setup-sp`, clones dependencies, compiles the plugin
+- **Dependencies**: Shallow-cloned directly from their GitHub repos in the build step
+- **Artifacts**: Creates package in `/tmp/package` directory
 - **Releases**: Tags and releases automatically on main/master branch
 - **Output**: Compiled plugins uploaded as GitHub artifacts for download
 
@@ -155,7 +152,7 @@ Players : 15/32
 
 ### Making Changes:
 1. **Test Dependencies**: Ensure ProxyKiller and DiscordWebhookAPI are available
-2. **Build Testing**: Use `sourceknight build` to compile and test changes
+2. **Build Testing**: Push/PR to trigger the GitHub Actions CI build, or compile locally with `spcomp`
 3. **Memory Safety**: Always pair allocations with proper cleanup
 4. **Error Handling**: Use both LogError and ExtendedDiscord logging when available
 5. **Thread Safety**: Handle both regular Discord channels and forum threads
@@ -213,16 +210,13 @@ if (g_Plugin_ExtDiscord) {
 6. **Thread Test**: Test both regular channel and thread messaging
 7. **Configuration Test**: Verify all ConVars work as expected
 
-### Local Testing (if SourceKnight is available):
+### Local Testing (if spcomp is available):
 ```bash
-# Validate YAML configuration
-python3 -c "import yaml; print(yaml.safe_load(open('sourceknight.yaml')))"
-
 # Check for syntax errors in SourcePawn code
 grep -E "(#include|#pragma|public Plugin)" addons/sourcemod/scripting/ProxyKillerDiscord.sp
 
-# Build test (if sourceknight installed)
-sourceknight build
+# Build test (if spcomp is installed and include dependencies are present)
+spcomp -i addons/sourcemod/scripting/include -o ProxyKillerDiscord.smx addons/sourcemod/scripting/ProxyKillerDiscord.sp
 ```
 
 ### Error Handling:
@@ -244,7 +238,7 @@ sourceknight build
 3. Test message length limits (WEBHOOK_MSG_MAX_SIZE)
 
 ### Adding New Dependencies:
-1. Update `sourceknight.yaml` dependencies section
+1. Update the "Install dependencies" step in `.github/workflows/ci.yml` (clone + copy include files)
 2. Add appropriate #include statements
 3. Update CI/CD if needed
 
