@@ -169,7 +169,7 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
     static int retries = 0;
     pack.Reset();
 
-    bool IsThreadReply = pack.ReadCell();
+    pack.ReadCell();
 
     char sMessage[WEBHOOK_MSG_MAX_SIZE], sWebhookURL[WEBHOOK_URL_MAX_SIZE];
     pack.ReadString(sMessage, sizeof(sMessage));
@@ -177,7 +177,7 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
 
     delete pack;
     
-    if ((!IsThreadReply && response.Status != HTTPStatus_OK) || (IsThreadReply && response.Status != HTTPStatus_NoContent))
+    if (response.Status != HTTPStatus_OK && response.Status != HTTPStatus_NoContent)
     {
         if (retries < g_cvWebhookRetry.IntValue)
         {
