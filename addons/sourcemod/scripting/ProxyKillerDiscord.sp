@@ -212,3 +212,4 @@ stock int GetClientCountEx(bool countBots)
     }
     return countBots ? iFakeClients + iRealClients : iRealClients;
 }
+
