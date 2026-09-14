@@ -20,11 +20,13 @@ jobs:
           set -euo pipefail
           mkdir -p addons/sourcemod/scripting/include deps
           git clone --depth=1 https://github.com/srcdslab/sm-plugin-ProxyKiller.git deps/proxykiller
-          cp -R deps/proxykiller/addons/sourcemod/scripting/*/* addons/sourcemod/scripting/
+          cp -R deps/proxykiller/addons/sourcemod/scripting/. addons/sourcemod/scripting/
           git clone --depth=1 https://github.com/srcdslab/sm-plugin-DiscordWebhookAPI.git deps/discordwebapi
           cp -R deps/discordwebapi/include/* addons/sourcemod/scripting/include/
           git clone --depth=1 https://github.com/srcdslab/sm-plugin-Extended-Discord.git deps/extended-discord
           cp -R deps/extended-discord/addons/sourcemod/scripting/include/* addons/sourcemod/scripting/include/
+          echo "=== include/ contents ==="
+          find addons/sourcemod/scripting/include -maxdepth 2
 
       - name: Build sourcemod plugin
         working-directory: addons/sourcemod/scripting
