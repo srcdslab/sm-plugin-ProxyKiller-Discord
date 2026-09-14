@@ -12,7 +12,7 @@
 
 ConVar g_cSteamProfileURLPrefix, g_cIPDetailURLPrefix, g_cCountBots;
 ConVar g_cvWebhook, g_cvWebhookRetry, g_cvAvatar;
-ConVar g_cvChannelType, g_cvThreadName, g_cvThreadID;
+ConVar g_cvUsername, g_cvThreadName, g_cvThreadID;
 
 char g_sCurrentMap[PLATFORM_MAX_PATH];
 bool g_Plugin_ExtDiscord = false;
@@ -22,7 +22,7 @@ public Plugin myinfo =
     name = PLUGIN_NAME,
     author = "maxime1907, Sikari, .Rushaway",
     description = "Sends detected vpn players info to discord",
-    version = "1.2.1",
+    version = "1.3.0",
     url = "https://github.com/srcdslab/sm-plugin-ProxyKiller-Discord"
 };
 
@@ -34,7 +34,7 @@ public void OnPluginStart()
     g_cvWebhook = CreateConVar("sm_proxykiller_discord_webhook", "", "The webhook URL of your Discord channel.", FCVAR_PROTECTED);
     g_cvWebhookRetry = CreateConVar("sm_proxykiller_discord_webhook_retry", "3", "Number of retries if webhook fails.", FCVAR_PROTECTED);
     g_cvAvatar = CreateConVar("sm_proxykiller_discord_avatar", "https://avatars.githubusercontent.com/u/110772618?s=200&v=4", "URL to Avatar image.");
-    g_cvChannelType = CreateConVar("sm_proxykiller_discord_channel_type", "0", "Type of your channel: (1 = Thread, 0 = Classic Text channel");
+    g_cvUsername = CreateConVar("sm_proxykiller_discord_username", "ProxyKiller Discord", "Discord username.");
 
     /* Thread config */
     g_cvThreadName = CreateConVar("sm_proxykiller_discord_threadname", "", "The Thread Name of your Discord forums. (If not empty, will create a new thread)", FCVAR_PROTECTED);
@@ -67,6 +67,12 @@ public void OnMapInit(const char[] mapName)
 
 public void ProxyKiller_OnClientResult(ProxyUser pUser, bool result, bool fromCache)
 {
+    if (!result)
+        return;
+
+    if (fromCache)
+        return;
+
     char sWebhookURL[WEBHOOK_URL_MAX_SIZE];
     g_cvWebhook.GetString(sWebhookURL, sizeof sWebhookURL);
 
@@ -75,9 +81,6 @@ public void ProxyKiller_OnClientResult(ProxyUser pUser, bool result, bool fromCa
         LogError("[%s] No webhook found or specified.", PLUGIN_NAME);
         return;
     }
-
-    if (!result) return;
-    if (fromCache) return;
 
     char sPlayerName[MAX_NAME_LENGTH];
     pUser.GetName(sPlayerName, sizeof(sPlayerName));
@@ -128,20 +131,12 @@ stock void SendWebHook(char sMessage[WEBHOOK_MSG_MAX_SIZE], char sWebhookURL[WEB
     g_cvThreadID.GetString(sThreadID, sizeof sThreadID);
     g_cvThreadName.GetString(sThreadName, sizeof sThreadName);
 
-    bool IsThread = g_cvChannelType.BoolValue;
+    /* Webhook UserName */
+    char sName[128];
+    g_cvUsername.GetString(sName, sizeof(sName));
 
-    if (IsThread) {
-        if (!sThreadName[0] && !sThreadID[0]) {
-            LogError("[%s] Thread Name or ThreadID not found or specified.", PLUGIN_NAME);
-            delete webhook;
-            return;
-        } else {
-            if (strlen(sThreadName) > 0) {
-                webhook.SetThreadName(sThreadName);
-                sThreadID[0] = '\0';
-            }
-        }
-    }
+    if (strlen(sName) > 0)
+        webhook.SetUsername(sName);
 
     /* Webhook Avatar */
     char sAvatar[256];
@@ -150,12 +145,10 @@ stock void SendWebHook(char sMessage[WEBHOOK_MSG_MAX_SIZE], char sWebhookURL[WEB
     if (strlen(sAvatar) > 0)
         webhook.SetAvatarURL(sAvatar);
 
-    DataPack pack = new DataPack();
+    if (strlen(sThreadName) > 0)
+        webhook.SetThreadName(sThreadName);
 
-    if (IsThread && strlen(sThreadName) <= 0 && strlen(sThreadID) > 0)
-        pack.WriteCell(1);
-    else
-        pack.WriteCell(0);
+    DataPack pack = new DataPack();
 
     pack.WriteString(sMessage);
     pack.WriteString(sWebhookURL);
@@ -169,8 +162,6 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
     static int retries = 0;
     pack.Reset();
 
-    pack.ReadCell();
-
     char sMessage[WEBHOOK_MSG_MAX_SIZE], sWebhookURL[WEBHOOK_URL_MAX_SIZE];
     pack.ReadString(sMessage, sizeof(sMessage));
     pack.ReadString(sWebhookURL, sizeof(sWebhookURL));
@@ -181,20 +172,20 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
     {
         if (retries < g_cvWebhookRetry.IntValue)
         {
-            PrintToServer("[%s] Failed to send the webhook. Resending it .. (%d/%d)", PLUGIN_NAME, retries, g_cvWebhookRetry.IntValue);
+            PrintToServer("[%s] Failed to send the webhook (HTTP %d). Resending it .. (%d/%d)", PLUGIN_NAME, view_as<int>(response.Status), retries, g_cvWebhookRetry.IntValue);
             SendWebHook(sMessage, sWebhookURL);
             retries++;
             return;
         } else {
             if (!g_Plugin_ExtDiscord)
             {
-                LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
+                LogError("[%s] Failed to send the webhook after %d retries (last HTTP status %d), aborting.", PLUGIN_NAME, retries, view_as<int>(response.Status));
                 LogError("[%s] Failed message : %s", PLUGIN_NAME, sMessage);
             }
         #if defined _extendeddiscord_included
             else
             {
-                ExtendedDiscord_LogError("[%s] Failed to send the webhook after %d retries, aborting.", PLUGIN_NAME, retries);
+                ExtendedDiscord_LogError("[%s] Failed to send the webhook after %d retries (last HTTP status %d), aborting.", PLUGIN_NAME, retries, view_as<int>(response.Status));
                 ExtendedDiscord_LogError("[%s] Failed message : %s", PLUGIN_NAME, sMessage);
             }
         #endif
