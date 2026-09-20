@@ -123,7 +123,7 @@ public void ProxyKiller_OnClientResult(ProxyUser pUser, bool result, bool fromCa
     SendWebHook(sMessage, sWebhookURL);
 }
 
-stock void SendWebHook(char sMessage[WEBHOOK_MSG_MAX_SIZE], char sWebhookURL[WEBHOOK_URL_MAX_SIZE])
+stock void SendWebHook(char sMessage[WEBHOOK_MSG_MAX_SIZE], char sWebhookURL[WEBHOOK_URL_MAX_SIZE], int retries = 0)
 {
     Webhook webhook = new Webhook(sMessage);
 
@@ -152,6 +152,7 @@ stock void SendWebHook(char sMessage[WEBHOOK_MSG_MAX_SIZE], char sWebhookURL[WEB
 
     pack.WriteString(sMessage);
     pack.WriteString(sWebhookURL);
+    pack.WriteCell(retries);
 
     webhook.Execute(sWebhookURL, OnWebHookExecuted, pack, sThreadID);
     delete webhook;
@@ -159,22 +160,21 @@ stock void SendWebHook(char sMessage[WEBHOOK_MSG_MAX_SIZE], char sWebhookURL[WEB
 
 public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
 {
-    static int retries = 0;
     pack.Reset();
 
     char sMessage[WEBHOOK_MSG_MAX_SIZE], sWebhookURL[WEBHOOK_URL_MAX_SIZE];
     pack.ReadString(sMessage, sizeof(sMessage));
     pack.ReadString(sWebhookURL, sizeof(sWebhookURL));
+    int retries = pack.ReadCell();
 
     delete pack;
-    
+
     if (response.Status != HTTPStatus_OK && response.Status != HTTPStatus_NoContent)
     {
         if (retries < g_cvWebhookRetry.IntValue)
         {
             PrintToServer("[%s] Failed to send the webhook (HTTP %d). Resending it .. (%d/%d)", PLUGIN_NAME, view_as<int>(response.Status), retries, g_cvWebhookRetry.IntValue);
-            SendWebHook(sMessage, sWebhookURL);
-            retries++;
+            SendWebHook(sMessage, sWebhookURL, retries + 1);
             return;
         } else {
             if (!g_Plugin_ExtDiscord)
@@ -191,8 +191,6 @@ public void OnWebHookExecuted(HTTPResponse response, DataPack pack)
         #endif
         }
     }
-
-    retries = 0;
 }
 
 stock int GetClientCountEx(bool countBots)
