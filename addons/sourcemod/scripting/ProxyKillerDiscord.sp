@@ -22,7 +22,7 @@ public Plugin myinfo =
     name = PLUGIN_NAME,
     author = "maxime1907, Sikari, .Rushaway",
     description = "Sends detected vpn players info to discord",
-    version = "1.3.0",
+    version = "1.3.1",
     url = "https://github.com/srcdslab/sm-plugin-ProxyKiller-Discord"
 };
 
